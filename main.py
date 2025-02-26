@@ -1,16 +1,87 @@
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 import os
 
 def main():
-    pass
+    password = input("Enter encryption password: ")
+    
+    while True:
+        print("\n1. Encrypt a file")
+        print("2. Decrypt a file")
+        print("3. Exit")
+        choice = input("Enter your choice (1-3): ")
+        
+        if choice == '3':
+            break
+            
+        input_file = input("Enter input file path: ")
+        output_file = input("Enter output file path: ")
+        
+        try:
+            key, salt = generate_key(password)
+            
+            if choice == '1':
+                encrypt(key, input_file, output_file)
+                print(f"File encrypted successfully! Salt: {salt.hex()}")
+                with open(output_file + '.salt', 'wb') as f:
+                    f.write(salt)
+                    
+            elif choice == '2':
+                try:
+                    with open(input_file + '.salt', 'rb') as f:
+                        salt = f.read()
+                    key, _ = generate_key(password)
+                    decrypt(key, input_file, output_file)
+                    print("File decrypted successfully!")
+                except FileNotFoundError:
+                    print("Salt file not found. Cannot decrypt without the original salt.")
+            
+        except Exception as e:
+            print(f"An error occurred: {str(e)}")
 
-def encrypt():
-    pass
+def encrypt(key: bytes, input_file: str, output_file: str) -> None:
+    iv = os.urandom(16)
+    
+    cipher = Cipher(
+        algorithms.AES(key),
+        modes.CBC(iv),
+        backend=default_backend()
+    )
+    encryptor = cipher.encryptor()
+    
+    with open(input_file, 'rb') as f:
+        plaintext = f.read()
+    
+    padding_length = 16 - (len(plaintext) % 16)
+    padded_data = plaintext + (bytes([padding_length]) * padding_length)
+    
+    ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+    
+    with open(output_file, 'wb') as f:
+        f.write(iv)
+        f.write(ciphertext)
 
-def decrypt():
-    pass
+def decrypt(key: bytes, input_file: str, output_file: str) -> None:
+    with open(input_file, 'rb') as f:
+        iv = f.read(16)
+        ciphertext = f.read()
+    
+    cipher = Cipher(
+        algorithms.AES(key),
+        modes.CBC(iv),
+        backend=default_backend()
+    )
+    decryptor = cipher.decryptor()
+    
+    padded_plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+    
+    padding_length = padded_plaintext[-1]
+    plaintext = padded_plaintext[:-padding_length]
+    
+    with open(output_file, 'wb') as f:
+        f.write(plaintext)
 
 def generate_key(password: str) -> bytes:
     password_bytes = password.encode()
