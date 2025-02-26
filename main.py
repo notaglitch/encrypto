@@ -9,7 +9,9 @@ def main():
     password = input("Enter encryption password: ")
     
     while True:
-        print("\n1. Encrypt a file")
+        print("\n=== File Encryption Tool ===")
+        print("This tool can encrypt/decrypt any type of file")
+        print("1. Encrypt a file")
         print("2. Decrypt a file")
         print("3. Exit")
         choice = input("Enter your choice (1-3): ")
@@ -17,7 +19,7 @@ def main():
         if choice == '3':
             break
             
-        input_file = input("Enter input file path: ")
+        input_file = input("Enter input file path (any file type): ")
         if not os.path.exists(input_file):
             print(f"Error: File '{input_file}' not found.")
             continue
@@ -27,9 +29,12 @@ def main():
         if not output_file:
             base_name = os.path.basename(input_file)
             if choice == '1':
-                output_file = os.path.splitext(base_name)[0] + '.encrypted'
+                original_ext = os.path.splitext(base_name)[1]
+                output_file = f"{os.path.splitext(base_name)[0]}{original_ext}.encrypted"
             else:
-                output_file = os.path.splitext(base_name)[0] + '_decrypted' + os.path.splitext(base_name)[1]
+                output_file = base_name.replace('.encrypted', '')
+                if output_file == base_name:
+                    output_file = os.path.splitext(base_name)[0] + '_decrypted' + os.path.splitext(base_name)[1]
         
         try:
             if choice == '1':
