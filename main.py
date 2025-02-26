@@ -17,14 +17,21 @@ def main():
             break
             
         input_file = input("Enter input file path: ")
-        output_file = input("Enter output file path: ")
+        output_file = input("Enter output file path (press Enter for default): ").strip()
+        
+        if not output_file:
+            base_name = os.path.basename(input_file)
+            if choice == '1':
+                output_file = os.path.splitext(base_name)[0] + '.encrypted'
+            else:
+                output_file = os.path.splitext(base_name)[0] + '_decrypted' + os.path.splitext(base_name)[1]
         
         try:
-            key, salt = generate_key(password)
-            
             if choice == '1':
+                key, salt = generate_key(password)
                 encrypt(key, input_file, output_file)
-                print(f"File encrypted successfully! Salt: {salt.hex()}")
+                print(f"File encrypted successfully! Output: {output_file}")
+                print(f"Salt: {salt.hex()}")
                 with open(output_file + '.salt', 'wb') as f:
                     f.write(salt)
                     
@@ -32,9 +39,9 @@ def main():
                 try:
                     with open(input_file + '.salt', 'rb') as f:
                         salt = f.read()
-                    key, _ = generate_key(password)
+                    key, _ = generate_key(password, salt)
                     decrypt(key, input_file, output_file)
-                    print("File decrypted successfully!")
+                    print(f"File decrypted successfully! Output: {output_file}")
                 except FileNotFoundError:
                     print("Salt file not found. Cannot decrypt without the original salt.")
             
@@ -83,9 +90,10 @@ def decrypt(key: bytes, input_file: str, output_file: str) -> None:
     with open(output_file, 'wb') as f:
         f.write(plaintext)
 
-def generate_key(password: str) -> bytes:
+def generate_key(password: str, salt: bytes = None) -> tuple[bytes, bytes]:
     password_bytes = password.encode()
-    salt = os.urandom(16)
+    if salt is None:
+        salt = os.urandom(16)
 
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
